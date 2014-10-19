@@ -1,0 +1,31 @@
+{
+  "name": "velosipedist/sculptor-client",
+  "description": "Sculptor API client",
+  "minimum-stability": "stable",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Nick Konev",
+      "email": "velosipedist.org@gmail.com"
+    }
+  ],
+  "require": {
+    "guzzlehttp/guzzle": "~5.0"
+  },
+  "require-dev": {
+    "phing/phing": "2.8.*",
+    "mtdowling/burgomaster": "0.0.2"
+  },
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/mtdowling/Burgomaster.git"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "velosipedist\\SculptorClient\\": "src/"
+    },
+    "files": ["src/facade/SculptorAPI.php"]
+  }
+}
