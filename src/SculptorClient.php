@@ -2,6 +2,8 @@
 namespace velosipedist\SculptorClient;
 
 use GuzzleHttp\Client;
+use GuzzleHttp\Message\ResponseInterface;
+use velosipedist\SculptorClient\exception\ApiException;
 
 class SculptorClient
 {
@@ -61,19 +63,15 @@ class SculptorClient
      * Send create new Lead API request
      * @param Lead $data
      * @throws \Exception
-     * @return \GuzzleHttp\Stream\StreamInterface|mixed
+     * @return ResponseInterface|mixed
      */
     public function createLead(Lead $data)
     {
+        $post = $this->extractLeadBody($data);
         try {
-            $response = $this->httpClient->post(
-                '/lead/api/lead',
-                [
-                    'body' => $this->extractLeadBody($data)
-                ]
-            );
-            return $response->getBody();
-        } catch (\Exception $e) {
+            $response = $this->callApiMethod('/lead/api/lead', $post);
+            return $response;
+        } catch (ApiException $e) {
             if (!is_null($callback = $this->errorHandler)) {
                 return $callback($e);
             } else {
@@ -179,6 +177,22 @@ class SculptorClient
                 </script>";
             });
             static::$registeredFormSelectors[$formCssSelector] = true;
+        }
+    }
+
+    /**
+     * @param string $url
+     * @param array $post
+     * @return ResponseInterface
+     * @throws ApiException
+     */
+    private function callApiMethod($url, $post)
+    {
+        $request = $this->httpClient->createRequest('POST', $url, ['body' => $post]);
+        try {
+            return $this->httpClient->send($request);
+        } catch (\Exception $e) {
+            throw new ApiException($e->getMessage(), $e->getCode(), $this->httpClient, $request);
         }
     }
 

@@ -1,16 +1,23 @@
 <?php
 require_once 'sculptor.phar';
+use velosipedist\SculptorClient\exception\ApiException;
 use velosipedist\SculptorClient\Lead;
 use velosipedist\SculptorClient\SculptorClient;
 
 SculptorClient::injectClientId('#only-form');
 
 if (isset($_POST['send'])) {
-
-    $api = new SculptorClient('123', '456');
-    $api->setErrorHandler(function ($e) {
+    $config = require __DIR__ . '/test-config.php';
+    $api = new SculptorClient(
+        $config['api_key'],
+        $config['project_id'],
+        'post',
+        'http://test.sculptor.tochno-tochno.ru'
+    );
+    $api->setErrorHandler(function (ApiException $e) {
         print "<div class='alert alert-danger'>";
         var_dump($e->getMessage());
+//        var_dump($e->getRequest()->getBody());
         print "</div>";
         return false;
     });
@@ -22,7 +29,7 @@ if (isset($_POST['send'])) {
     ));
     if ($result) {
         print "<div class='alert alert-success'>";
-        var_dump($result);
+        var_dump($result->json());
         print "</div>";
     }
 }
