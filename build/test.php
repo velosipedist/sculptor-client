@@ -17,7 +17,6 @@ if (isset($_POST['send'])) {
     $api->setErrorHandler(function (ApiException $e) {
         print "<div class='alert alert-danger'>";
         var_dump($e->getMessage());
-//        var_dump($e->getRequest()->getBody());
         print "</div>";
         return false;
     });
@@ -25,7 +24,11 @@ if (isset($_POST['send'])) {
         $_POST['name'],
         $_POST['phone'],
         $_POST['email'],
-        $_POST['city']
+        $_POST['city'],
+        null,
+        null,
+        null,
+        ['zip' => $_POST['zip']]
     ));
     if ($result) {
         print "<div class='alert alert-success'>";
@@ -61,6 +64,7 @@ if (isset($_POST['send'])) {
                 <div class="form-controls"><input type="text" name="phone" placeholder="Phone"/></div>
                 <div class="form-controls"><input type="text" name="email" placeholder="Email"/></div>
                 <div class="form-controls"><input type="text" name="city" placeholder="City"/></div>
+                <div class="form-controls"><input type="text" name="zip" placeholder="ZIP CODE"/></div>
                 <input type="submit" value="Send" class="btn btn-primary" name="send"/>
             </form>
         </div>

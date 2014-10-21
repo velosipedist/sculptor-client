@@ -57,7 +57,7 @@ class Lead
         $customerCityLocalId = null,
         $customerCityGeoId = null,
         $leadType = null,
-        $customData = null
+        array $customData = []
     )
     {
         $this->customerFullname = $customerFullname;
@@ -66,8 +66,8 @@ class Lead
         $this->customerCityGeonamesId = $customerCityGeoId;
         $this->customerEmail = $customerEmail;
         $this->customerPhone = $customerPhone;
-        $this->customData = $customData;
         $this->leadType = $leadType;
+        $this->customData = $customData;
     }
 
 
@@ -125,5 +125,13 @@ class Lead
     public function getLeadType()
     {
         return $this->leadType;
+    }
+
+    /**
+     * @return array
+     */
+    public function getCustomData()
+    {
+        return $this->customData;
     }
 }

@@ -98,6 +98,7 @@ class SculptorClient
             'customerFullname' => $data->getCustomerFullname(),
             'customerEmail' => $data->getCustomerEmail(),
             'customerPhone' => $data->getCustomerPhone(),
+            'customData' => json_encode($data->getCustomData()),
         ];
         if ($data->getCustomerCityGeonamesId()) {
             $extracted['customerCityGeonamesId'] = $data->getCustomerCityGeonamesId();
