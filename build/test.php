@@ -1,5 +1,6 @@
 <?php
 require_once 'sculptor.phar';
+require_once __DIR__ . '/../vendor/fzaninotto/faker/src/autoload.php';
 use velosipedist\SculptorClient\exception\ApiException;
 use velosipedist\SculptorClient\Lead;
 use velosipedist\SculptorClient\SculptorClient;
@@ -36,6 +37,7 @@ if (isset($_POST['send'])) {
         print "</div>";
     }
 }
+$faker = Faker\Factory::create('ru_RU');
 ?>
 <!doctype html>
 <html lang="en-US">
@@ -57,16 +59,30 @@ if (isset($_POST['send'])) {
 <body>
 <div class="container">
     <div class="row">
-        <div class="col-sm-6">
-            Fill me:
-            <form method="post" id="only-form">
-                <div class="form-controls"><input type="text" name="name" placeholder="Name"/></div>
-                <div class="form-controls"><input type="text" name="phone" placeholder="Phone"/></div>
-                <div class="form-controls"><input type="text" name="email" placeholder="Email"/></div>
-                <div class="form-controls"><input type="text" name="city" placeholder="City"/></div>
-                <div class="form-controls"><input type="text" name="zip" placeholder="ZIP CODE"/></div>
-                <input type="submit" value="Send" class="btn btn-primary" name="send"/>
-            </form>
+        <div class="col-md-4 col-sm-12">
+            <br/>
+
+            <div class="well">Fill me:
+                <form method="post" id="only-form">
+                    <div class="form-group">
+                        <input class="form-control" type="text" name="name" placeholder="Name"
+                               value="<?= $faker->firstName . ' ' . $faker->lastName ?>"/>
+                    </div>
+                    <div class="form-group"><input class="form-control" type="text" name="phone" placeholder="Phone"
+                                                   value="<?= $faker->phoneNumber ?>"/>
+                    </div>
+                    <div class="form-group"><input class="form-control" type="text" name="email" placeholder="Email"
+                                                   value="<?= $faker->email ?>"/>
+                    </div>
+                    <div class="form-group"><input class="form-control" type="text" name="city" placeholder="City"
+                                                   value="<?= $faker->city ?>"/>
+                    </div>
+                    <div class="form-group"><input class="form-control" type="text" name="zip" placeholder="ZIP CODE"
+                                                   value="<?= $faker->postcode ?>"/>
+                    </div>
+                    <input type="submit" value="Send" class="btn btn-primary" name="send"/>
+                </form>
+            </div>
         </div>
     </div>
 </div>
