@@ -15,7 +15,8 @@
   },
   "require-dev": {
     "phing/phing": "2.8.*",
-    "mtdowling/burgomaster": "0.0.2"
+    "mtdowling/burgomaster": "0.0.2",
+    "fzaninotto/faker": "1.4.*"
   },
   "repositories": [
     {

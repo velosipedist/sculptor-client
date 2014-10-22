@@ -100,6 +100,7 @@ class SculptorClient
             'customerPhone' => $data->getCustomerPhone(),
             'customData' => json_encode($data->getCustomData()),
         ];
+        $formScriptData = $this->formMethod == 'post' ? $_POST['__sculptor'] : $_GET['__sculptor'];
         if ($data->getCustomerCityGeonamesId()) {
             $extracted['customerCityGeonamesId'] = $data->getCustomerCityGeonamesId();
         }
@@ -112,15 +113,13 @@ class SculptorClient
 
         if ($this->googleClientId) {
             $extracted['googleClientId'] = $this->googleClientId;
-        } elseif ($this->formMethod == 'post') {
-            $extracted['googleClientId'] = $_POST['__sculptor_google_client_id'];
         } else {
-            $extracted['googleClientId'] = $_GET['__sculptor_google_client_id'];
+            $extracted['googleClientId'] = $formScriptData['google_client_id'];
         }
         if ($this->pageUrl) {
             $extracted['pageUrl'] = $this->pageUrl;
         } else {
-            $extracted['pageUrl'] = $_SERVER['HTTP_REFERER'];
+            $extracted['pageUrl'] = $formScriptData['page_url'];
         }
         return $extracted;
     }
@@ -169,11 +168,20 @@ class SculptorClient
                 print "<script>
                 try{
                     ga(function(tracker){
-                        $('<input/>', {
+                        $('{$formCssSelector}')
+                        .append($('<input/>', {
                             type:'hidden',
-                            name:'__sculptor_google_client_id',
+                            name:'__sculptor[google_client_id]',
                             value: tracker.get('clientId')
-                        }).appendTo($('{$formCssSelector}'));
+                        }).append($('<input/>', {
+                            type:'hidden',
+                            name:'__sculptor[page_url]',
+                            value: location.href + (location.hash ? '#' + location.hash : '')
+                        })).append($('<input/>', {
+                            type:'hidden',
+                            name:'__sculptor[page_title]',
+                            value: document.title
+                        }));
                     })}catch(e){try{console.log(e);}catch(e2){}};
                 </script>";
             });
