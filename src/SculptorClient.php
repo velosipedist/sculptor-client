@@ -173,7 +173,7 @@ class SculptorClient
                             type:'hidden',
                             name:'__sculptor[google_client_id]',
                             value: tracker.get('clientId')
-                        }).append($('<input/>', {
+                        })).append($('<input/>', {
                             type:'hidden',
                             name:'__sculptor[page_url]',
                             value: location.href + (location.hash ? '#' + location.hash : '')
