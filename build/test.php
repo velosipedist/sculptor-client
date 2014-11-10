@@ -1,25 +1,26 @@
 <?php
 require_once 'sculptor.phar';
 require_once 'faker.phar';
+//require_once __DIR__ . '/../vendor/autoload.php';
 use velosipedist\SculptorClient\exception\ApiException;
 use velosipedist\SculptorClient\Lead;
 use velosipedist\SculptorClient\SculptorClient;
 
 SculptorClient::injectClientId('#only-form');
-
 if (isset($_POST['send'])) {
     $config = require __DIR__ . '/test-config.php';
     $api = new SculptorClient(
         $config['api_key'],
         $config['project_id'],
         'post',
-        'http://test.sculptor.tochno-tochno.ru'
+        'http://test.sculptor.tochno-tochno.ru',
+        ['verify' => false]
     );
+    $api->setDebugMode(true);
     $api->setErrorHandler(function (ApiException $e) {
         print "<div class='alert alert-danger'>";
-        var_dump($e->getMessage());
+        print $e->getMessage();
         print "</div>";
-        return false;
     });
     $result = $api->createLead(new Lead(
         $_POST['name'],
@@ -32,9 +33,7 @@ if (isset($_POST['send'])) {
         ['zip' => $_POST['zip']]
     ));
     if ($result) {
-        print "<div class='alert alert-success'>";
-        var_dump($result->json());
-        print "</div>";
+        print "<div class='alert alert-success'>Success</div>";
     }
 }
 $faker = Faker\Factory::create('ru_RU');

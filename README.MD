@@ -1,6 +1,6 @@
 Sculptor API client.
 
-For now landing pages (Leads) API is only available.
+Landing pages (Leads) API is only available for now.
 
 ##Leads example
 
@@ -32,6 +32,9 @@ $api->setErrorHandler(function($e){
   return false;
 });
 
+// enable PHPConsole logs
+$api->setDebugMode(true);
+
 $lead = new velosipedist\SculptorClient\Lead(
   $formData['name'],
   $formData['phone'],
@@ -53,14 +56,29 @@ if($result){
 // if it is AJAX script, you can just print {"message": "OK"}, or even empty string with 200 status.
 ```
 
-### Errors handling
+### Errors handling and debugging
 
-Any runtime error on request sending will be thrown as `ApiException`. You can catch it at any call using `try{...}catch(){}` construction.
+SculptorClient has two debugging approaches that can be used separately or simultaneously.
 
-Or you can set default handler for every request like in previous code listing. `ApiEcxeption` will contain any errors data useful for debugging:
+#### 1. PhpConsole (recommended)
+
+Most safe and non-destructive way to debug API calls is using [PhpConsole](https://github.com/barbushin/php-console) library developed for [Chrome extension](https://chrome.google.com/webstore/detail/php-console/nfhmhhlpfleoednkpnnnkolmclajemef).
+
+Just enable debug mode:
 
 ```php
-$api->setErrorHandler(function(ApiException $e){
+$api->setDebugMode(true);
+```
+
+And set API key as password in Chrome extension prompt.
+
+#### 2. ApiException handling
+It is less secure way that can be used if you have no possibility to use Chrome extension.
+
+You can set default handler for every request like in previous code listing. `ApiException` will contain any errors data useful for debugging:
+
+```php
+$api->setErrorHandler(function(velosipedist\SculptorClient\exception\ApiException $e){
   // display client error explanation
   print "<span class='alert alert-warning'>Lead sending error: {$e->getMessage()}</span>";
 
@@ -69,10 +87,8 @@ $api->setErrorHandler(function(ApiException $e){
 
   // or maybe client misconfigured
   var_dump($e->getClient());
-
-  // anyway send fail flag
-  return false;
 });
+
 //...
 // now any API call will just return false on every request error
 $result = $api->createLead($lead);

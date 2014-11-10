@@ -3,18 +3,24 @@ namespace velosipedist\SculptorClient;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Message\ResponseInterface;
+use PhpConsole\Connector;
+use PhpConsole\Helper;
 use velosipedist\SculptorClient\exception\ApiException;
 
 class SculptorClient
 {
     /**
+     * @var array
+     */
+    private static $registeredFormSelectors = [];
+    /**
+     * @var boolean Enable debug mode
+     */
+    private $debugMode = false;
+    /**
      * @var Client API calls client library
      */
     private $httpClient;
-    /**
-     * @var bool Is Sculptor client in test mode
-     */
-    private $testMode = false;
     /**
      * @var callable
      */
@@ -31,10 +37,8 @@ class SculptorClient
      * @var string
      */
     private $pageUrl;
-    /**
-     * @var array
-     */
-    private static $registeredFormSelectors = [];
+    private $apiKey;
+    private $phpConsoleSetupDone = false;
 
     /**
      * Start up Sculptor API session instance.
@@ -42,28 +46,82 @@ class SculptorClient
      * @param $projectId
      * @param string $formMethod
      * @param string $host
+     * @param array $guzzleOptions
      */
-    function __construct($apiKey, $projectId, $formMethod = 'post', $host = 'http://sculptor.tochno-tochno.ru')
+    function __construct(
+        $apiKey, $projectId, $formMethod = 'post', $host = 'http://sculptor.tochno-tochno.ru', array $guzzleOptions = []
+    )
     {
-        $this->httpClient = new Client(
-            [
-                'base_url' => $host,
-                'defaults' => [
-                    'query' => [
-                        'api_key' => $apiKey,
-                        'project_id' => $projectId,
-                    ]
+        $config = [
+            'base_url' => $host,
+            'defaults' => [
+                'query' => [
+                    'api_key' => $apiKey,
+                    'project_id' => $projectId,
                 ]
             ]
-        );
+        ];
+        $config = $this->applyAddGuzzleOptions($guzzleOptions, $config);
+        $this->httpClient = new Client($config);
         $this->formMethod = $formMethod;
+        $this->apiKey = $apiKey;
+    }
+
+    /**
+     * Merge only safe params for configuring Guzzle
+     * @param array $guzzleOptions
+     * @param array $config
+     * @return array
+     */
+    private function applyAddGuzzleOptions(array $guzzleOptions, array $config)
+    {
+        if (isset($guzzleOptions['verify'])) {
+            $config['defaults']['verify'] = $guzzleOptions['verify'];
+        }
+        if (isset($guzzleOptions['cert'])) {
+            $config['defaults']['cert'] = $guzzleOptions['cert'];
+            return $config;
+        }
+        return $config;
+    }
+
+    /**
+     * Register script to catch Google Analytics API ClientId and pass it to posted form data
+     * @param $formCssSelector
+     */
+    public static function injectClientId($formCssSelector)
+    {
+        if (!isset(static::$registeredFormSelectors[$formCssSelector])) {
+            register_shutdown_function(function () use ($formCssSelector) {
+                print "<script>
+                try{
+                    ga(function(tracker){
+                        $('{$formCssSelector}')
+                        .append($('<input/>', {
+                            type:'hidden',
+                            name:'__sculptor[google_client_id]',
+                            value: tracker.get('clientId')
+                        })).append($('<input/>', {
+                            type:'hidden',
+                            name:'__sculptor[page_url]',
+                            value: location.href + (location.hash ? '#' + location.hash : '')
+                        })).append($('<input/>', {
+                            type:'hidden',
+                            name:'__sculptor[page_title]',
+                            value: document.title
+                        }))
+                    })}catch(e){try{console.log(e)}catch(e2){}}
+                </script>";
+            });
+            static::$registeredFormSelectors[$formCssSelector] = true;
+        }
     }
 
     /**
      * Send create new Lead API request
      * @param Lead $data
      * @throws \Exception
-     * @return ResponseInterface|mixed
+     * @return ResponseInterface|null
      */
     public function createLead(Lead $data)
     {
@@ -71,21 +129,10 @@ class SculptorClient
         try {
             $response = $this->callApiMethod('/lead/api/lead', $post);
             return $response;
-        } catch (ApiException $e) {
-            if (!is_null($callback = $this->errorHandler)) {
-                return $callback($e);
-            } else {
-                throw $e;
-            }
+        } catch (\Exception $e) {
+            //todo ErrorResponse?
+            return null;
         }
-    }
-
-    /**
-     * @param boolean $testMode
-     */
-    public function setTestMode($testMode)
-    {
-        $this->testMode = $testMode;
     }
 
     /**
@@ -125,6 +172,53 @@ class SculptorClient
     }
 
     /**
+     * Call REST method of Sculptor API handling successful response and debugging failed requests
+     * @param string $url
+     * @param array $post
+     * @return ResponseInterface
+     * @throws ApiException
+     */
+    private function callApiMethod($url, $post)
+    {
+        if ($this->debugMode) {
+            $this->setupPhpConsole();
+        }
+        $request = $this->httpClient->createRequest('POST', $url, ['body' => $post]);
+        try {
+            $result = $this->httpClient->send($request);
+            if ($this->debugMode) {
+                Helper::debug($request->getUrl(), 'sculptor.request.success');
+                Helper::debug($result->json(), 'sculptor.request.success');
+            }
+            return $result;
+        } catch (\Exception $e) {
+            if ($this->debugMode) {
+                Helper::debug($e->getMessage(), 'sculptor.error');
+                Helper::debug($this->httpClient, 'sculptor.client');
+                Helper::debug($request, 'sculptor.request');
+            }
+            $apiException = new ApiException($e->getMessage(), $e->getCode(), $this->httpClient, $request);
+            if (!is_null($callback = $this->errorHandler)) {
+                $callback($apiException);
+            }
+            throw $apiException;
+        }
+    }
+
+    /**
+     * Bootstrap PHPConsole with API key as password
+     * @throws \Exception
+     */
+    private function setupPhpConsole()
+    {
+        if (!$this->phpConsoleSetupDone) {
+            Helper::register();
+            Connector::getInstance()->setPassword($this->apiKey);
+            $this->phpConsoleSetupDone = true;
+        }
+    }
+
+    /**
      * Set or reset with null error handler for any request.
      * It must be any valid callback that receive one parameter, exception:
      * ```php
@@ -158,51 +252,18 @@ class SculptorClient
     }
 
     /**
-     * Register script to catch Google Analytics API ClientId and pass it to posted form data
-     * @param $formCssSelector
+     * @return boolean
      */
-    public static function injectClientId($formCssSelector)
+    public function getDebugMode()
     {
-        if (!isset(static::$registeredFormSelectors[$formCssSelector])) {
-            register_shutdown_function(function () use ($formCssSelector) {
-                print "<script>
-                try{
-                    ga(function(tracker){
-                        $('{$formCssSelector}')
-                        .append($('<input/>', {
-                            type:'hidden',
-                            name:'__sculptor[google_client_id]',
-                            value: tracker.get('clientId')
-                        })).append($('<input/>', {
-                            type:'hidden',
-                            name:'__sculptor[page_url]',
-                            value: location.href + (location.hash ? '#' + location.hash : '')
-                        })).append($('<input/>', {
-                            type:'hidden',
-                            name:'__sculptor[page_title]',
-                            value: document.title
-                        }));
-                    })}catch(e){try{console.log(e);}catch(e2){}};
-                </script>";
-            });
-            static::$registeredFormSelectors[$formCssSelector] = true;
-        }
+        return $this->debugMode;
     }
 
     /**
-     * @param string $url
-     * @param array $post
-     * @return ResponseInterface
-     * @throws ApiException
+     * @param boolean $debugMode
      */
-    private function callApiMethod($url, $post)
+    public function setDebugMode($debugMode)
     {
-        $request = $this->httpClient->createRequest('POST', $url, ['body' => $post]);
-        try {
-            return $this->httpClient->send($request);
-        } catch (\Exception $e) {
-            throw new ApiException($e->getMessage(), $e->getCode(), $this->httpClient, $request);
-        }
+        $this->debugMode = (bool)$debugMode;
     }
-
 }
