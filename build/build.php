@@ -9,6 +9,7 @@ $brg->recursiveCopy('vendor/guzzlehttp/guzzle/src', 'vendor/guzzlehttp/guzzle/sr
 $brg->recursiveCopy('vendor/guzzlehttp/ringphp/src', 'vendor/guzzlehttp/ringphp/src');
 $brg->recursiveCopy('vendor/guzzlehttp/streams/src', 'vendor/guzzlehttp/streams/src');
 $brg->recursiveCopy('vendor/react/promise/src', 'vendor/react/promise/src');
+$brg->recursiveCopy('vendor/php-console/php-console/src', 'vendor/php-console/php-console/src');
 $brg->recursiveCopy('src', 'src');
 $brg->deepCopy('vendor/autoload.php', 'vendor/autoload.php');
 $brg->createPhar('build/sculptor.phar', null, 'vendor/autoload.php');

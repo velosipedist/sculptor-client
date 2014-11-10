@@ -11,7 +11,8 @@
   ],
   "require": {
     "php": "5.4.*",
-    "guzzlehttp/guzzle": "~5.0"
+    "guzzlehttp/guzzle": "~5.0",
+    "php-console/php-console": "3.*"
   },
   "require-dev": {
     "phing/phing": "2.8.*",
