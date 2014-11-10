@@ -8,6 +8,14 @@ use velosipedist\SculptorClient\exception\ApiException;
 class SculptorClient
 {
     /**
+     * @var array
+     */
+    private static $registeredFormSelectors = [];
+    /**
+     * @var boolean Enable debug mode
+     */
+    private $debugMode = false;
+    /**
      * @var Client API calls client library
      */
     private $httpClient;
@@ -31,10 +39,6 @@ class SculptorClient
      * @var string
      */
     private $pageUrl;
-    /**
-     * @var array
-     */
-    private static $registeredFormSelectors = [];
 
     /**
      * Start up Sculptor API session instance.
@@ -62,6 +66,56 @@ class SculptorClient
     }
 
     /**
+     * Merge only safe params for configuring Guzzle
+     * @param array $guzzleOptions
+     * @param array $config
+     * @return array
+     */
+    private function applyAddGuzzleOptions(array $guzzleOptions, array $config)
+    {
+        if (isset($guzzleOptions['verify'])) {
+            $config['defaults']['verify'] = $guzzleOptions['verify'];
+        }
+        if (isset($guzzleOptions['cert'])) {
+            $config['defaults']['cert'] = $guzzleOptions['cert'];
+            return $config;
+        }
+        return $config;
+    }
+
+    /**
+     * Register script to catch Google Analytics API ClientId and pass it to posted form data
+     * @param $formCssSelector
+     */
+    public static function injectClientId($formCssSelector)
+    {
+        if (!isset(static::$registeredFormSelectors[$formCssSelector])) {
+            register_shutdown_function(function () use ($formCssSelector) {
+                print "<script>
+                try{
+                    ga(function(tracker){
+                        $('{$formCssSelector}')
+                        .append($('<input/>', {
+                            type:'hidden',
+                            name:'__sculptor[google_client_id]',
+                            value: tracker.get('clientId')
+                        }).append($('<input/>', {
+                            type:'hidden',
+                            name:'__sculptor[page_url]',
+                            value: location.href + (location.hash ? '#' + location.hash : '')
+                        })).append($('<input/>', {
+                            type:'hidden',
+                            name:'__sculptor[page_title]',
+                            value: document.title
+                        }));
+                    })}catch(e){try{console.log(e);}catch(e2){}};
+                </script>";
+            });
+            static::$registeredFormSelectors[$formCssSelector] = true;
+        }
+    }
+
+    /**
      * Send create new Lead API request
      * @param Lead $data
      * @throws \Exception
@@ -80,14 +134,6 @@ class SculptorClient
                 throw $e;
             }
         }
-    }
-
-    /**
-     * @param boolean $testMode
-     */
-    public function setTestMode($testMode)
-    {
-        $this->testMode = $testMode;
     }
 
     /**
@@ -127,6 +173,31 @@ class SculptorClient
     }
 
     /**
+     * @param string $url
+     * @param array $post
+     * @return ResponseInterface
+     * @throws ApiException
+     */
+    private function callApiMethod($url, $post)
+    {
+        $request = $this->httpClient->createRequest('POST', $url, ['body' => $post]);
+        try {
+            var_dump($request->getConfig());
+            return $this->httpClient->send($request);
+        } catch (\Exception $e) {
+            throw new ApiException($e->getMessage(), $e->getCode(), $this->httpClient, $request);
+        }
+    }
+
+    /**
+     * @param boolean $testMode
+     */
+    public function setTestMode($testMode)
+    {
+        $this->testMode = $testMode;
+    }
+
+    /**
      * Set or reset with null error handler for any request.
      * It must be any valid callback that receive one parameter, exception:
      * ```php
@@ -160,70 +231,19 @@ class SculptorClient
     }
 
     /**
-     * Register script to catch Google Analytics API ClientId and pass it to posted form data
-     * @param $formCssSelector
+     * @return boolean
      */
-    public static function injectClientId($formCssSelector)
+    public function getDebugMode()
     {
-        if (!isset(static::$registeredFormSelectors[$formCssSelector])) {
-            register_shutdown_function(function () use ($formCssSelector) {
-                print "<script>
-                try{
-                    ga(function(tracker){
-                        $('{$formCssSelector}')
-                        .append($('<input/>', {
-                            type:'hidden',
-                            name:'__sculptor[google_client_id]',
-                            value: tracker.get('clientId')
-                        }).append($('<input/>', {
-                            type:'hidden',
-                            name:'__sculptor[page_url]',
-                            value: location.href + (location.hash ? '#' + location.hash : '')
-                        })).append($('<input/>', {
-                            type:'hidden',
-                            name:'__sculptor[page_title]',
-                            value: document.title
-                        }));
-                    })}catch(e){try{console.log(e);}catch(e2){}};
-                </script>";
-            });
-            static::$registeredFormSelectors[$formCssSelector] = true;
-        }
+        return $this->debugMode;
     }
 
     /**
-     * @param string $url
-     * @param array $post
-     * @return ResponseInterface
-     * @throws ApiException
+     * @param boolean $debugMode
      */
-    private function callApiMethod($url, $post)
+    public function setDebugMode($debugMode)
     {
-        $request = $this->httpClient->createRequest('POST', $url, ['body' => $post]);
-        try {
-            var_dump($request->getConfig());
-            return $this->httpClient->send($request);
-        } catch (\Exception $e) {
-            throw new ApiException($e->getMessage(), $e->getCode(), $this->httpClient, $request);
-        }
-    }
-
-    /**
-     * Merge only safe params for configuring Guzzle
-     * @param array $guzzleOptions
-     * @param array $config
-     * @return array
-     */
-    private function applyAddGuzzleOptions(array $guzzleOptions, array $config)
-    {
-        if (isset($guzzleOptions['verify'])) {
-            $config['defaults']['verify'] = $guzzleOptions['verify'];
-        }
-        if (isset($guzzleOptions['cert'])) {
-            $config['defaults']['cert'] = $guzzleOptions['cert'];
-            return $config;
-        }
-        return $config;
+        $this->debugMode = (bool)$debugMode;
     }
 
 }
