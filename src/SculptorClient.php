@@ -43,19 +43,21 @@ class SculptorClient
      * @param string $formMethod
      * @param string $host
      */
-    function __construct($apiKey, $projectId, $formMethod = 'post', $host = 'http://sculptor.tochno-tochno.ru')
+    function __construct(
+        $apiKey, $projectId, $formMethod = 'post', $host = 'http://sculptor.tochno-tochno.ru', array $guzzleOptions = []
+    )
     {
-        $this->httpClient = new Client(
-            [
-                'base_url' => $host,
-                'defaults' => [
-                    'query' => [
-                        'api_key' => $apiKey,
-                        'project_id' => $projectId,
-                    ]
+        $config = [
+            'base_url' => $host,
+            'defaults' => [
+                'query' => [
+                    'api_key' => $apiKey,
+                    'project_id' => $projectId,
                 ]
             ]
-        );
+        ];
+        $config = $this->applyAddGuzzleOptions($guzzleOptions, $config);
+        $this->httpClient = new Client($config);
         $this->formMethod = $formMethod;
     }
 
@@ -199,10 +201,29 @@ class SculptorClient
     {
         $request = $this->httpClient->createRequest('POST', $url, ['body' => $post]);
         try {
+            var_dump($request->getConfig());
             return $this->httpClient->send($request);
         } catch (\Exception $e) {
             throw new ApiException($e->getMessage(), $e->getCode(), $this->httpClient, $request);
         }
+    }
+
+    /**
+     * Merge only safe params for configuring Guzzle
+     * @param array $guzzleOptions
+     * @param array $config
+     * @return array
+     */
+    private function applyAddGuzzleOptions(array $guzzleOptions, array $config)
+    {
+        if (isset($guzzleOptions['verify'])) {
+            $config['defaults']['verify'] = $guzzleOptions['verify'];
+        }
+        if (isset($guzzleOptions['cert'])) {
+            $config['defaults']['cert'] = $guzzleOptions['cert'];
+            return $config;
+        }
+        return $config;
     }
 
 }

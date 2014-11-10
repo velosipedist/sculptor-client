@@ -1,6 +1,7 @@
 <?php
-require_once 'sculptor.phar';
-require_once 'faker.phar';
+//require_once 'sculptor.phar';
+//require_once 'faker.phar';
+require_once __DIR__ . '/../vendor/autoload.php';
 use velosipedist\SculptorClient\exception\ApiException;
 use velosipedist\SculptorClient\Lead;
 use velosipedist\SculptorClient\SculptorClient;
@@ -13,7 +14,8 @@ if (isset($_POST['send'])) {
         $config['api_key'],
         $config['project_id'],
         'post',
-        'http://test.sculptor.tochno-tochno.ru'
+        'http://test.sculptor.tochno-tochno.ru',
+        ['cert' => false, 'verify' => false]
     );
     $api->setErrorHandler(function (ApiException $e) {
         print "<div class='alert alert-danger'>";
@@ -33,6 +35,7 @@ if (isset($_POST['send'])) {
     ));
     if ($result) {
         print "<div class='alert alert-success'>";
+        var_dump((string)$result);
         var_dump($result->json());
         print "</div>";
     }
