@@ -148,14 +148,14 @@ class SculptorClient
             'customData' => json_encode($data->getCustomData()),
         ];
         $formScriptData = $this->formMethod == 'post' ? $_POST['__sculptor'] : $_GET['__sculptor'];
-        if ($data->getCustomerCityGeonamesId()) {
-            $extracted['customerCityGeonamesId'] = $data->getCustomerCityGeonamesId();
-        }
         if ($data->getCustomerCityName()) {
             $extracted['customerCityName'] = $data->getCustomerCityName();
         }
         if ($data->getCustomerCityLocalId()) {
             $extracted['customerCityLocalId'] = $data->getCustomerCityLocalId();
+        }
+        if ($data->getTypeSlug()) {
+            $extracted['typeSlug'] = $data->getTypeSlug();
         }
 
         if ($this->googleClientId) {

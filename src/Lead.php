@@ -18,10 +18,6 @@ class Lead
      */
     private $customerCityLocalId;
     /**
-     * @var int Id of city in geonames.org database
-     */
-    private $customerCityGeonamesId;
-    /**
      * @var string
      */
     private $customerEmail;
@@ -31,13 +27,13 @@ class Lead
     private $customerPhone;
     /**
      * Any serializable data
-     * @var mixed
+     * @var array
      */
     private $customData;
     /**
      * @var string One of lead types pre-configured slugs on Sculptor
      */
-    private $leadType;
+    private $typeSlug;
 
     /**
      * @param string $customerFullname
@@ -45,9 +41,8 @@ class Lead
      * @param string $customerEmail
      * @param string $customerCityName
      * @param int $customerCityLocalId
-     * @param int $customerCityGeoId
-     * @param null $leadType
-     * @param mixed $customData
+     * @param string $typeSlug
+     * @param array $customData
      */
     function __construct(
         $customerFullname,
@@ -55,18 +50,16 @@ class Lead
         $customerEmail,
         $customerCityName = null,
         $customerCityLocalId = null,
-        $customerCityGeoId = null,
-        $leadType = null,
+        $typeSlug = 'default',
         array $customData = []
     )
     {
         $this->customerFullname = $customerFullname;
         $this->customerCityName = $customerCityName;
         $this->customerCityLocalId = $customerCityLocalId;
-        $this->customerCityGeonamesId = $customerCityGeoId;
         $this->customerEmail = $customerEmail;
         $this->customerPhone = $customerPhone;
-        $this->leadType = $leadType;
+        $this->typeSlug = $typeSlug;
         $this->customData = $customData;
     }
 
@@ -96,14 +89,6 @@ class Lead
     }
 
     /**
-     * @return int|null
-     */
-    public function getCustomerCityGeonamesId()
-    {
-        return $this->customerCityGeonamesId;
-    }
-
-    /**
      * @return string
      */
     public function getCustomerEmail()
@@ -122,9 +107,9 @@ class Lead
     /**
      * @return string
      */
-    public function getLeadType()
+    public function getTypeSlug()
     {
-        return $this->leadType;
+        return $this->typeSlug;
     }
 
     /**

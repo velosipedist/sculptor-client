@@ -41,7 +41,7 @@ $lead = new velosipedist\SculptorClient\Lead(
   $formData['email'],
   $formData['cityname'],
   $formData['city_id'],
-  null, // if we don't know city global id
+  'default', // or any other of registered slugs in project
   ['something'=>'custom in form data']
 );
 

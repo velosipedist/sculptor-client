@@ -28,8 +28,7 @@ if (isset($_POST['send'])) {
         $_POST['email'],
         $_POST['city'],
         null,
-        null,
-        null,
+        'default',
         ['zip' => $_POST['zip']]
     ));
     if ($result) {
