@@ -1,25 +1,33 @@
 <project name="Sculptor client" default="build" basedir=".">
     <property name="phar.output" value="build/sculptor.phar"/>
 
-    <target name="clean-build">
-        <delete file="${phar.output}" failonerror="false"/>
+    <target name="phar">
+        <echo>Building phar...</echo>
+        <pharpackage basedir="." destfile="build/sculptor.phar" stub="build/stub.php">
+            <fileset dir=".">
+                <include name="src/**/*.php"/>
+                <include name="vendor/autoload.php"/>
+                <include name="vendor/composer/**"/>
+                <include name="vendor/guzzlehttp/guzzle/src/**"/>
+                <include name="vendor/guzzlehttp/ringphp/src/**"/>
+                <include name="vendor/guzzlehttp/streams/src/**"/>
+                <include name="vendor/react/promise/src/**"/>
+            </fileset>
+        </pharpackage>
     </target>
-    <target name="build" depends="clean-build">
-        <echo>Starting Box build</echo>
-        <!--<exec command="php box.phar build" passthru="true"/>-->
-        <exec command="php build/build.php" passthru="true"/>
-
-        <property name="phar.built" value="false"/>
-        <available property="phar.built" file="${phar.output}"/>
-        <delete dir="build/phar"/>
-        <if>
-            <isfalse value="${phar.built}"/>
-            <then>
-                <fail message="phar build failed"/>
-            </then>
-            <else>
-                <echo>Build successful</echo>
-            </else>
-        </if>
+    <target name="after-phar">
+        <phpunit pharlocation="phpunit.phar" bootstrap="tests/afterBuild/bootstrap.php"
+                 haltonfailure="true">
+            <formatter type="summary" usefile="false"/>
+            <batchtest>
+                <fileset dir="tests/afterBuild">
+                    <include name="**/*Test.php"/>
+                </fileset>
+            </batchtest>
+        </phpunit>
+    </target>
+    <target name="build">
+        <phingcall target="phar"/>
+        <phingcall target="after-phar"/>
     </target>
 </project>

@@ -15,16 +15,8 @@
     "php-console/php-console": "3.*"
   },
   "require-dev": {
-    "phing/phing": "2.8.*",
-    "mtdowling/burgomaster": "0.0.2",
     "fzaninotto/faker": "1.4.*"
   },
-  "repositories": [
-    {
-      "type": "vcs",
-      "url": "https://github.com/mtdowling/Burgomaster.git"
-    }
-  ],
   "autoload": {
     "psr-4": {
       "velosipedist\\SculptorClient\\": "src/"

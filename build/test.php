@@ -1,5 +1,5 @@
 <?php
-require_once 'sculptor.phar';
+require_once 'sculptor_old.phar';
 require_once 'faker.phar';
 //require_once __DIR__ . '/../vendor/autoload.php';
 use velosipedist\SculptorClient\exception\ApiException;
