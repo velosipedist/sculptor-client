@@ -5,6 +5,7 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Message\ResponseInterface;
 use PhpConsole\Connector;
 use PhpConsole\Helper;
+use Symfony\Component\OptionsResolver\OptionsResolver;
 use velosipedist\SculptorClient\exception\ApiException;
 
 class SculptorClient
@@ -44,46 +45,16 @@ class SculptorClient
      * Start up Sculptor API session instance.
      * @param $apiKey
      * @param $projectId
-     * @param string $formMethod
-     * @param string $host
-     * @param array $guzzleOptions
+     * @param array $options
      */
-    function __construct(
-        $apiKey, $projectId, $formMethod = 'post', $host = 'http://sculptor.tochno-tochno.ru', array $guzzleOptions = []
-    )
+    function __construct($apiKey, $projectId, array $options = [])
     {
-        $config = [
-            'base_url' => $host,
-            'defaults' => [
-                'query' => [
-                    'api_key' => $apiKey,
-                    'project_id' => $projectId,
-                ]
-            ]
-        ];
-        $config = $this->applyAddGuzzleOptions($guzzleOptions, $config);
-        $this->httpClient = new Client($config);
-        $this->formMethod = $formMethod;
+        $options = $this->resolveInitOptions($apiKey, $projectId, $options);
+        $this->httpClient = new Client($options['guzzle']);
+        $this->formMethod = $options['form_method'];
         $this->apiKey = $apiKey;
     }
 
-    /**
-     * Merge only safe params for configuring Guzzle
-     * @param array $guzzleOptions
-     * @param array $config
-     * @return array
-     */
-    private function applyAddGuzzleOptions(array $guzzleOptions, array $config)
-    {
-        if (isset($guzzleOptions['verify'])) {
-            $config['defaults']['verify'] = $guzzleOptions['verify'];
-        }
-        if (isset($guzzleOptions['cert'])) {
-            $config['defaults']['cert'] = $guzzleOptions['cert'];
-            return $config;
-        }
-        return $config;
-    }
 
     /**
      * Register script to catch Google Analytics API ClientId and pass it to posted form data
@@ -265,5 +236,61 @@ class SculptorClient
     public function setDebugMode($debugMode)
     {
         $this->debugMode = (bool)$debugMode;
+    }
+
+    /**
+     * @param $apiKey
+     * @param $projectId
+     * @param array $options
+     * @return array
+     */
+    private function resolveInitOptions($apiKey, $projectId, array $options)
+    {
+        $optionsResolver = new OptionsResolver();
+        $optionsResolver->setDefaults([
+            'base_url' => 'http://sculptor.tochno-tochno.ru',
+            'form_method' => 'post',
+            'guzzle' => [],
+        ]);
+        $optionsResolver->setAllowedTypes([
+            'base_url' => 'string',
+            'form_method' => 'string',
+            'guzzle' => 'array',
+        ]);
+        $optionsResolver->setAllowedValues([
+            'form_method' => ['get', 'post']
+        ]);
+        $optionsResolver->setNormalizer('base_url', function ($options, $baseUrl) {
+            return trim($baseUrl);
+        });
+        $optionsResolver->setNormalizer('guzzle', function ($options, $guzzleOpts) use ($apiKey, $projectId) {
+            isset($guzzleOpts['defaults']) or $guzzleOpts['defaults'] = [];
+            $guzzleOpts['base_url'] = $options['base_url'];
+            if (substr($options['base_url'], 0, 6) == 'https:') {
+                $guzzleOpts['defaults']['verify'] = isset($guzzleOpts['verify']) ? $guzzleOpts['verify'] : false;
+                if (isset($guzzleOpts['cert'])) {
+                    $guzzleOpts['defaults']['cert'] = $guzzleOpts['cert'];
+                }
+            } else {
+                unset($guzzleOpts['defaults']['verify'], $guzzleOpts['defaults']['cert']);
+            }
+            unset($guzzleOpts['verify'], $guzzleOpts['cert']);
+            $guzzleOpts['defaults']['query'] = [
+                'api_key' => $apiKey,
+                'project_id' => $projectId,
+            ];
+            $guzzleOpts['defaults']['allow_redirects'] = false;
+            return $guzzleOpts;
+        });
+        $options = $optionsResolver->resolve($options);
+        return $options;
+    }
+
+    /**
+     * @return Client
+     */
+    public function getHttpClient()
+    {
+        return $this->httpClient;
     }
 }

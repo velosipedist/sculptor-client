@@ -1,7 +1,18 @@
 <project name="Sculptor client" default="build" basedir=".">
     <property name="phar.output" value="build/sculptor.phar"/>
-
-    <target name="phar">
+    <target name="setup">
+        <if>
+            <not>
+                <!--suppress PhingDomInspection -->
+                <available file="./phpunit.phar"/>
+            </not>
+            <then>
+                <fail message="download phpunit.phar 4.6+ first: https://phar.phpunit.de/phpunit.phar"/>
+                <!--<httpget dir="." url="https://phar.phpunit.de/phpunit.phar" />-->
+            </then>
+        </if>
+    </target>
+    <target name="phar" depends="setup">
         <echo>Building phar...</echo>
         <pharpackage basedir="." destfile="build/sculptor.phar" stub="build/stub.php">
             <fileset dir=".">
@@ -12,22 +23,28 @@
                 <include name="vendor/guzzlehttp/ringphp/src/**"/>
                 <include name="vendor/guzzlehttp/streams/src/**"/>
                 <include name="vendor/react/promise/src/**"/>
+                <include name="vendor/hamcrest/hamcrest-php/hamcrest/Hamcrest.php"/>
+                <include name="vendor/symfony/**/*.php"/>
+                <exclude name="vendor/symfony/**/OptionsResolver/Tests/**"/>
             </fileset>
         </pharpackage>
     </target>
-    <target name="after-phar">
-        <phpunit pharlocation="phpunit.phar" bootstrap="tests/afterBuild/bootstrap.php"
-                 haltonfailure="true">
+    <target name="tests" depends="setup">
+        <phpunit pharlocation="phpunit.phar" configuration="unit.phpunit.xml"
+                 haltonfailure="true" processisolation="true">
             <formatter type="summary" usefile="false"/>
             <batchtest>
-                <fileset dir="tests/afterBuild">
+                <fileset dir="tests/unit">
                     <include name="**/*Test.php"/>
                 </fileset>
             </batchtest>
         </phpunit>
     </target>
-    <target name="build">
+    <target name="after_pack" depends="setup">
+        <exec command="php phpunit.phar -c after_pack.phpunit.xml" passthru="true" checkreturn="true"/>
+    </target>
+    <target name="build" depends="tests">
         <phingcall target="phar"/>
-        <phingcall target="after-phar"/>
+        <phingcall target="after_pack"/>
     </target>
 </project>

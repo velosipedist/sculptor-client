@@ -96,6 +96,33 @@ $result = $api->createLead($lead);
 
   > :exclamation: **IMPORTANT** :exclamation: Don't forget to remove debugging info on public production stage, to hide private keys!
 
+### Options
+
+Any possible options can be passed at client initialization:
+ 
+```php
+$api = new SculptorClient('your API key', 'Available Project ID', ['option1'=>'value' /* ... */]);
+```
+
+#### base_url
+
+At most cases for override defaul http:// address with https:// protocol:
+
+```php
+$api = new SculptorClient('your API key', 'Available Project ID', ['base_url' => 'https://sculptor.tochno-tochno.ru']);
+```
+
+#### guzzle
+
+If you want to customize Guzzle default options, pass `guzzle` array:
+
+```php
+$api = new SculptorClient('your API key', 'Available Project ID', [
+  'guzzle' => ['cert'=>'path_to_https.crt']
+]);
+```
+
+
 ### Override some fields
 
 Lead API requires to pageUrl & googleClientId fields to be sent. By default these values will be guessed from form request.

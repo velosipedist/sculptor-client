@@ -12,10 +12,12 @@
   "require": {
     "php": "5.4.*",
     "guzzlehttp/guzzle": "~5.0",
-    "php-console/php-console": "3.*"
+    "php-console/php-console": "3.*",
+    "symfony/options-resolver": "2.6.*"
   },
   "require-dev": {
-    "fzaninotto/faker": "1.4.*"
+    "fzaninotto/faker": "1.4.*",
+    "mockery/mockery": "0.9.*"
   },
   "autoload": {
     "psr-4": {
