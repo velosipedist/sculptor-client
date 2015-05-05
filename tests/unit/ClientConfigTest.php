@@ -9,13 +9,12 @@ class ClientConfigTest extends \PHPUnit_Framework_TestCase
     {
         $client = new SculptorClient(123, 456);
         $this->assertNotEquals('', $client->getHttpClient()->getBaseUrl());
-        $this->assertEquals(false, $client->getHttpClient()->getDefaultOption('allow_redirects'));
     }
 
     public function testSecureOptions()
     {
         $client = new SculptorClient(123, 456);
-        $this->assertEquals(true, $client->getHttpClient()->getDefaultOption('verify'));
+        $this->assertEquals(false, $client->getHttpClient()->getDefaultOption('verify'));
         $this->assertEquals(null, $client->getHttpClient()->getDefaultOption('cert'));
 
         $client = new SculptorClient(123, 456, ['base_url' => 'http://127.0.0.1']);
@@ -39,5 +38,15 @@ class ClientConfigTest extends \PHPUnit_Framework_TestCase
         new SculptorClient(123, 456, ['foo' => 'bar']);
         $this->setExpectedException('\Symfony\Component\OptionsResolver\Exception\ExceptionInterface');
         new SculptorClient(123, 456, ['guzzle' => 'bar']);
+    }
+
+    public function testTestMode()
+    {
+        $client = new SculptorClient(123, 456);
+        $defaultQuery = $client->getHttpClient()->getDefaultOption('query');
+        $this->assertArrayNotHasKey('test_mode', $defaultQuery);
+        $client = new SculptorClient(123, 456, ['testing' => true]);
+        $defaultQuery = $client->getHttpClient()->getDefaultOption('query');
+        $this->assertArrayHasKey('test_mode', $defaultQuery);
     }
 }
