@@ -3,20 +3,15 @@ namespace velosipedist\SculptorClient;
 
 use GuzzleHttp\Client;
 use GuzzleHttp\Message\ResponseInterface;
-use PhpConsole\Connector;
-use PhpConsole\Helper;
+use Symfony\Component\OptionsResolver\OptionsResolver;
 use velosipedist\SculptorClient\exception\ApiException;
+use velosipedist\SculptorClient\exception\BadResponseException;
 
 class SculptorClient
 {
-    /**
-     * @var array
-     */
-    private static $registeredFormSelectors = [];
-    /**
-     * @var boolean Enable debug mode
-     */
-    private $debugMode = false;
+    private static $javascriptLibraryRegistered = false;
+    private static $leadJavascriptOptions;
+
     /**
      * @var Client API calls client library
      */
@@ -37,84 +32,152 @@ class SculptorClient
      * @var string
      */
     private $pageUrl;
+    /**
+     * @var string
+     */
     private $apiKey;
-    private $phpConsoleSetupDone = false;
+    /**
+     * @var array
+     */
+    private $resolvedOptions;
 
     /**
      * Start up Sculptor API session instance.
-     * @param $apiKey
-     * @param $projectId
-     * @param string $formMethod
-     * @param string $host
-     * @param array $guzzleOptions
+     * @param string $apiKey
+     * @param string $projectGuid
+     * @param array $options
      */
-    function __construct(
-        $apiKey, $projectId, $formMethod = 'post', $host = 'http://sculptor.tochno-tochno.ru', array $guzzleOptions = []
-    )
+    function __construct($apiKey, $projectGuid, array $options = [])
     {
-        $config = [
-            'base_url' => $host,
-            'defaults' => [
-                'query' => [
-                    'api_key' => $apiKey,
-                    'project_id' => $projectId,
-                ]
-            ]
-        ];
-        $config = $this->applyAddGuzzleOptions($guzzleOptions, $config);
-        $this->httpClient = new Client($config);
-        $this->formMethod = $formMethod;
+        $options = $this->resolveInitOptions($apiKey, $projectGuid, $options);
+        $this->httpClient = new Client($options['guzzle']);
+        $this->formMethod = $options['form_method'];
+        $this->resolvedOptions = $options;
         $this->apiKey = $apiKey;
     }
 
     /**
-     * Merge only safe params for configuring Guzzle
-     * @param array $guzzleOptions
-     * @param array $config
-     * @return array
+     * Reconfigure javascript injection at runtime, before or after
+     * @param array $options
      */
-    private function applyAddGuzzleOptions(array $guzzleOptions, array $config)
+    public static function configureLeadsJavascript(array $options = [])
     {
-        if (isset($guzzleOptions['verify'])) {
-            $config['defaults']['verify'] = $guzzleOptions['verify'];
+        $resolver = new OptionsResolver();
+        $resolver->setDefaults([
+            'mock_ga' => false,
+            'enabled' => true,
+        ])->setAllowedTypes([
+            'mock_ga' => 'bool',
+            'enabled' => 'bool',
+        ]);
+        static::$leadJavascriptOptions = $resolver->resolve($options);
+        if (!static::$javascriptLibraryRegistered) {
+            static::$javascriptLibraryRegistered = true;
+            register_shutdown_function(function () {
+                // incapsulate static call
+                static::appendJavascript();
+            });
         }
-        if (isset($guzzleOptions['cert'])) {
-            $config['defaults']['cert'] = $guzzleOptions['cert'];
-            return $config;
-        }
-        return $config;
     }
 
     /**
-     * Register script to catch Google Analytics API ClientId and pass it to posted form data
-     * @param $formCssSelector
+     * @param $apiKey
+     * @param $projectGuid
+     * @param array $options
+     * @return array
      */
-    public static function injectClientId($formCssSelector)
+    private function resolveInitOptions($apiKey, $projectGuid, array $options)
     {
-        if (!isset(static::$registeredFormSelectors[$formCssSelector])) {
-            register_shutdown_function(function () use ($formCssSelector) {
-                print "<script>
-                try{
-                    ga(function(tracker){
-                        $('{$formCssSelector}')
-                        .append($('<input/>', {
-                            type:'hidden',
-                            name:'__sculptor[google_client_id]',
-                            value: tracker.get('clientId')
-                        })).append($('<input/>', {
-                            type:'hidden',
-                            name:'__sculptor[page_url]',
-                            value: location.href + (location.hash ? '#' + location.hash : '')
-                        })).append($('<input/>', {
-                            type:'hidden',
-                            name:'__sculptor[page_title]',
-                            value: document.title
-                        }))
-                    })}catch(e){try{console.log(e)}catch(e2){}}
-                </script>";
-            });
-            static::$registeredFormSelectors[$formCssSelector] = true;
+        $optionsResolver = new OptionsResolver();
+        $optionsResolver->setDefaults([
+            'base_url' => 'https://sculptor.tochno-tochno.ru',
+            'form_method' => 'post',
+            'guzzle' => [],
+            'testing' => false,
+        ]);
+        $optionsResolver->setAllowedTypes([
+            'base_url' => 'string',
+            'form_method' => 'string',
+            'guzzle' => 'array',
+            'testing' => 'bool',
+        ]);
+        $optionsResolver->setAllowedValues([
+            'form_method' => ['get', 'post'],
+        ]);
+        $optionsResolver->setNormalizer('base_url', function ($options, $baseUrl) {
+            return trim($baseUrl);
+        });
+        $optionsResolver->setNormalizer('guzzle', function ($options, $guzzleOpts) use ($apiKey, $projectGuid) {
+            isset($guzzleOpts['defaults']) or $guzzleOpts['defaults'] = [];
+            $guzzleOpts['base_url'] = $options['base_url'];
+            if (substr($options['base_url'], 0, 6) == 'https:') {
+                $guzzleOpts['defaults']['verify'] = isset($guzzleOpts['verify']) ? $guzzleOpts['verify'] : false;
+                if (isset($guzzleOpts['cert'])) {
+                    $guzzleOpts['defaults']['cert'] = $guzzleOpts['cert'];
+                }
+            } else {
+                unset($guzzleOpts['defaults']['verify'], $guzzleOpts['defaults']['cert']);
+            }
+            unset($guzzleOpts['verify'], $guzzleOpts['cert']);
+            $guzzleOpts['defaults']['query'] = [
+                'api_key' => $apiKey,
+                'project_id' => $projectGuid,
+            ];
+            $guzzleOpts['defaults']['allow_redirects'] = true;
+            if ($options['testing']) {
+                $guzzleOpts['defaults']['query']['test_mode'] = 1;
+            }
+            return $guzzleOpts;
+        });
+        $options = $optionsResolver->resolve($options);
+        return $options;
+    }
+
+
+    /**
+     * Shutdown script procedure that appends javascripts for catching google client ids and mocking it for testing.
+     */
+    private static function appendJavascript()
+    {
+        if (!(static::$leadJavascriptOptions['enabled'])) {
+            return;
         }
+        $scripts = [];
+        if (static::$leadJavascriptOptions['mock_ga']) {
+            $scripts[] = <<<JS
+                function ga(callback){jQuery(function(){
+                    callback({"get": function(){return Math.random()}})
+                })}
+JS;
+        }
+        $scripts[] = <<<JS
+            try{
+                ga(function(tracker){
+                    jQuery('form[data-sculptor-lead]')
+                    .append(jQuery('<input/>', {
+                        type:'hidden',
+                        name:'__sculptor[google_client_id]',
+                        value: tracker.get('clientId')
+                    })).append(jQuery('<input/>', {
+                        type:'hidden',
+                        name:'__sculptor[page_url]',
+                        value: location.href + (location.hash ? '#' + location.hash : '')
+                    })).append(jQuery('<input/>', {
+                        type:'hidden',
+                        name:'__sculptor[page_title]',
+                        value: document.title
+                    }))
+                })
+            }catch(e){
+                try{console.log(e)}catch(e2){}
+            }
+JS;
+
+        print "<script>\n //Sculptor API";
+        foreach ($scripts as $script) {
+            print "\n" . $script . "\n";
+        }
+        print '</script>';
     }
 
     /**
@@ -126,16 +189,11 @@ class SculptorClient
     public function createLead(Lead $data)
     {
         $post = $this->extractLeadBody($data);
-        try {
-            $response = $this->callApiMethod('/lead/api/lead', $post);
-            return $response;
-        } catch (\Exception $e) {
-            //todo ErrorResponse?
-            return null;
-        }
+        return $this->callApiMethod('/lead/api/lead', $post);
     }
 
     /**
+     * Gets array of data to send to API, using some overrides (pageUrl, googleClientId)
      * @param Lead $data
      * @return array
      */
@@ -172,49 +230,30 @@ class SculptorClient
     }
 
     /**
-     * Call REST method of Sculptor API handling successful response and debugging failed requests
+     * Call REST method of Sculptor API
      * @param string $url
      * @param array $post
-     * @return ResponseInterface
+     * @return ResponseInterface|null Response if any
      * @throws ApiException
      */
     private function callApiMethod($url, $post)
     {
-        if ($this->debugMode) {
-            $this->setupPhpConsole();
-        }
         $request = $this->httpClient->createRequest('POST', $url, ['body' => $post]);
         try {
-            $result = $this->httpClient->send($request);
-            if ($this->debugMode) {
-                Helper::debug($request->getUrl(), 'sculptor.request.success');
-                Helper::debug($result->json(), 'sculptor.request.success');
+            $response = $this->httpClient->send($request);
+            if ($response->getStatusCode() != 200) {
+                throw new BadResponseException("Failed to send lead data", $response);
             }
-            return $result;
+            return $response;
         } catch (\Exception $e) {
-            if ($this->debugMode) {
-                Helper::debug($e->getMessage(), 'sculptor.error');
-                Helper::debug($this->httpClient, 'sculptor.client');
-                Helper::debug($request, 'sculptor.request');
+            $response = $e instanceof BadResponseException ? $e->getResponse() : null;
+            $apiException = new ApiException($e->getMessage(), $e->getCode(), $this->httpClient, $request, $response);
+            if (is_callable($callback = $this->errorHandler)) {
+                call_user_func_array($callback, [$apiException]);
+                return $response;
+            } else {
+                throw $apiException;
             }
-            $apiException = new ApiException($e->getMessage(), $e->getCode(), $this->httpClient, $request);
-            if (!is_null($callback = $this->errorHandler)) {
-                $callback($apiException);
-            }
-            throw $apiException;
-        }
-    }
-
-    /**
-     * Bootstrap PHPConsole with API key as password
-     * @throws \Exception
-     */
-    private function setupPhpConsole()
-    {
-        if (!$this->phpConsoleSetupDone) {
-            Helper::register();
-            Connector::getInstance()->setPassword($this->apiKey);
-            $this->phpConsoleSetupDone = true;
         }
     }
 
@@ -226,6 +265,9 @@ class SculptorClient
      *   // do something with it, maybe returning any data you need after error occured
      * });
      * ```
+     *
+     * If error handler is null, ApiException will be thrown on createLead() errors
+     *
      * @param callable|null $errorHandler
      */
     public function setErrorHandler($errorHandler)
@@ -252,18 +294,20 @@ class SculptorClient
     }
 
     /**
-     * @return boolean
+     * Mainly for testing purposes
+     * @return Client
      */
-    public function getDebugMode()
+    public function getHttpClient()
     {
-        return $this->debugMode;
+        return $this->httpClient;
     }
 
     /**
-     * @param boolean $debugMode
+     * @return array
      */
-    public function setDebugMode($debugMode)
+    public function getResolvedOptions()
     {
-        $this->debugMode = (bool)$debugMode;
+        return $this->resolvedOptions;
     }
+
 }
