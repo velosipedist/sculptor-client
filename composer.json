@@ -23,6 +23,6 @@
     "psr-4": {
       "velosipedist\\SculptorClient\\": "src/"
     },
-    "files": ["src/facade/SculptorAPI.php"]
+    "files": ["src/bootstrap.php"]
   }
 }
