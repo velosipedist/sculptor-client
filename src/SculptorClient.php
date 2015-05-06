@@ -44,12 +44,11 @@ class SculptorClient
     /**
      * Start up Sculptor API session instance.
      * @param string $apiKey
-     * @param string $projectGuid
      * @param array $options
      */
-    function __construct($apiKey, $projectGuid, array $options = [])
+    function __construct($apiKey, array $options = [])
     {
-        $options = $this->resolveInitOptions($apiKey, $projectGuid, $options);
+        $options = $this->resolveInitOptions($apiKey, $options);
         $this->httpClient = new Client($options['guzzle']);
         $this->formMethod = $options['form_method'];
         $this->resolvedOptions = $options;
@@ -82,11 +81,10 @@ class SculptorClient
 
     /**
      * @param $apiKey
-     * @param $projectGuid
      * @param array $options
      * @return array
      */
-    private function resolveInitOptions($apiKey, $projectGuid, array $options)
+    private function resolveInitOptions($apiKey, array $options)
     {
         $optionsResolver = new OptionsResolver();
         $optionsResolver->setDefaults([
@@ -107,7 +105,7 @@ class SculptorClient
         $optionsResolver->setNormalizer('base_url', function ($options, $baseUrl) {
             return trim($baseUrl);
         });
-        $optionsResolver->setNormalizer('guzzle', function ($options, $guzzleOpts) use ($apiKey, $projectGuid) {
+        $optionsResolver->setNormalizer('guzzle', function ($options, $guzzleOpts) use ($apiKey) {
             isset($guzzleOpts['defaults']) or $guzzleOpts['defaults'] = [];
             $guzzleOpts['base_url'] = $options['base_url'];
             if (substr($options['base_url'], 0, 6) == 'https:') {
@@ -121,7 +119,6 @@ class SculptorClient
             unset($guzzleOpts['verify'], $guzzleOpts['cert']);
             $guzzleOpts['defaults']['query'] = [
                 'api_key' => $apiKey,
-                'project_id' => $projectGuid,
             ];
             $guzzleOpts['defaults']['allow_redirects'] = true;
             if ($options['testing']) {
@@ -182,14 +179,14 @@ JS;
 
     /**
      * Send create new Lead API request
+     * @param string $projectGuid
      * @param Lead $data
-     * @throws \Exception
      * @return ResponseInterface|null
      */
-    public function createLead(Lead $data)
+    public function createLead($projectGuid, Lead $data)
     {
         $post = $this->extractLeadBody($data);
-        return $this->callApiMethod('/lead/api/lead', $post);
+        return $this->callApiMethod('/lead/api/lead', $post, ['project_id' => $projectGuid]);
     }
 
     /**
@@ -230,15 +227,39 @@ JS;
     }
 
     /**
+     * @return Project[]
+     */
+    public function listProjects()
+    {
+        $list = [];
+        $projects = $this->callApiMethod('/lead/api/projects');
+        $decoded = $projects->json();
+        foreach ($decoded['data'] as $projectData) {
+            $list[] = new Project($projectData['name'], $projectData['guid']);
+        }
+        return $list;
+    }
+
+    /**
      * Call REST method of Sculptor API
      * @param string $url
      * @param array $post
+     * @param array $query
      * @return ResponseInterface|null Response if any
-     * @throws ApiException
      */
-    private function callApiMethod($url, $post)
+    private function callApiMethod($url, array $post = [], array $query = [])
     {
-        $request = $this->httpClient->createRequest('POST', $url, ['body' => $post]);
+        if ($post) {
+            $request = $this->httpClient->createRequest('POST', $url, [
+                'body' => $post,
+                'query' => $query
+            ]);
+
+        } else {
+            $request = $this->httpClient->createRequest('GET', $url, [
+                'query' => $query
+            ]);
+        }
         try {
             $response = $this->httpClient->send($request);
             if ($response->getStatusCode() != 200) {
