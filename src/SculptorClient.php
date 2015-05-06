@@ -227,18 +227,39 @@ JS;
     }
 
     /**
+     * @return Project[]
+     */
+    public function listProjects()
+    {
+        $list = [];
+        $projects = $this->callApiMethod('/lead/api/projects');
+        $decoded = $projects->json();
+        foreach ($decoded['data'] as $projectData) {
+            $list[] = new Project($projectData['name'], $projectData['guid']);
+        }
+        return $list;
+    }
+
+    /**
      * Call REST method of Sculptor API
      * @param string $url
      * @param array $post
      * @param array $query
      * @return ResponseInterface|null Response if any
      */
-    private function callApiMethod($url, $post, array $query = [])
+    private function callApiMethod($url, array $post = [], array $query = [])
     {
-        $request = $this->httpClient->createRequest('POST', $url, [
-            'body' => $post,
-            'query' => $query
-        ]);
+        if ($post) {
+            $request = $this->httpClient->createRequest('POST', $url, [
+                'body' => $post,
+                'query' => $query
+            ]);
+
+        } else {
+            $request = $this->httpClient->createRequest('GET', $url, [
+                'query' => $query
+            ]);
+        }
         try {
             $response = $this->httpClient->send($request);
             if ($response->getStatusCode() != 200) {

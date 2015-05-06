@@ -105,7 +105,7 @@ $api = new SculptorClient('your API key', [
 
 #### testing
 
-Set it to `true` for sending API calls marked as test only.
+Set it to `true` for sending API calls marked as test only. Then new leads will be marked as hidden.
 
 
 ### Errors handling and debugging
