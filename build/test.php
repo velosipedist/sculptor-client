@@ -11,7 +11,7 @@ SculptorClient::configureLeadsJavascript([
 
 if (isset($_POST['send'])) {
     $config = require __DIR__ . '/test-config.php';
-    $api = new SculptorClient($config['api_key'], $config['project_id'], [
+    $api = new SculptorClient($config['api_key'], [
         'testing' => true
     ]);
     $api->setErrorHandler(function (ApiException $e) {
@@ -31,7 +31,7 @@ if (isset($_POST['send'])) {
     if ($_POST['google_client_id']) {
         $api->setGoogleClientId(trim($_POST['google_client_id']));
     }
-    $response = $api->createLead($lead);
+    $response = $api->createLead($config['project_id'], $lead);
     if ($response) {
         print "<div class='alert alert-success'>Success</div>";
     }

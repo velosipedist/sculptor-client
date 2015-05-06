@@ -51,7 +51,7 @@ After form was submitted to any php script for post-processing, we must create A
 ```php
 // handling successful form submisson.
 // Form data maybe already sent, now we should register new Lead at Sculptor CRM
-$api = new velosipedist\SculptorClient\SculptorClient('your API key', 'Available Project ID');
+$api = new velosipedist\SculptorClient\SculptorClient('your API key');
 
 $lead = new velosipedist\SculptorClient\Lead(
   $formData['name'],
@@ -65,7 +65,7 @@ $lead = new velosipedist\SculptorClient\Lead(
 
 // if no error handler set, then Exception will be thrown on fail
 try{
-  $result = $api->createLead($lead);
+  $result = $api->createLead('Available Project ID', $lead);
   // API response has 'message' and 'data' keys
   $message = $result->json()['message'];
   print "<span class='alert alert-success'>$message</span>";
@@ -82,7 +82,7 @@ try{
 Any possible options can be passed at client initialization:
  
 ```php
-$api = new SculptorClient('your API key', 'Available Project ID', ['option1'=>'value' /* ... */]);
+$api = new SculptorClient('your API key', ['option1'=>'value' /* ... */]);
 ```
 
 #### base_url
@@ -90,7 +90,7 @@ $api = new SculptorClient('your API key', 'Available Project ID', ['option1'=>'v
 At most cases for override default https:// address with http:// protocol.
 
 ```php
-$api = new SculptorClient('your API key', 'Available Project ID', ['base_url' => 'http://sculptor.tochno-tochno.ru']);
+$api = new SculptorClient('your API key', ['base_url' => 'http://sculptor.tochno-tochno.ru']);
 ```
 
 #### guzzle
@@ -98,7 +98,7 @@ $api = new SculptorClient('your API key', 'Available Project ID', ['base_url' =>
 If you want to customize Guzzle default options, pass `guzzle` array:
 
 ```php
-$api = new SculptorClient('your API key', 'Available Project ID', [
+$api = new SculptorClient('your API key', [
   'guzzle' => ['cert' => 'path_to_https.crt', 'handler' => /* custom handler setup */]
 ]);
 ```
@@ -146,7 +146,7 @@ This is just more flexible way to debug client and handle errors on runtime. Jus
 
 ```php
 try {
-  $result = $api->createLead($lead);
+  $result = $api->createLead('Available Project ID', $lead);
 } catch(velosipedist\SculptorClient\exception\ApiException $e) {
   // you have the same data as in previous example
 }
@@ -168,7 +168,7 @@ $api->setGoogleClientId('my-known-client-id');
 $api->setPageUrl('http://domain.com/common/landing');
 
 // now send the landing result
-$result = $api->createLead($lead);
+$result = $api->createLead('Available Project ID', $lead);
 
 // ...etc
 ```
@@ -184,7 +184,6 @@ Make sure you have installed Composer dependencies first. Also you'll need confi
 ```php
 <? return [
   'api_key' => '<your API key>',
-  'project_id' => '<test project id>'
 ];
 ```
 
